@@ -19,7 +19,7 @@ import ManageGuides from './pages/admin/ManageGuides';
 import ManagePlaces from './pages/admin/ManagePlaces';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import AdminHome from './pages/admin/adminHome';
+import AdminHome from './pages/admin/AdminHome';
 import ManageUsers from './pages/admin/ManageUsers';
 import ViewBookings from './pages/admin/ViewBooking';
 import Requests from './pages/guide/Requests';
