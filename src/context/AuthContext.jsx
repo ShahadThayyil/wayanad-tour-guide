@@ -37,8 +37,6 @@ export const AuthProvider = ({ children }) => {
     } 
     // 3. Check for Normal User (Simulated)
     else {
-      // For demo, we accept any other login as a "User" if they signed up previously
-      // Or just allow generic login for testing:
       user = { uid: 'user' + Date.now(), email, displayName: email.split('@')[0] };
       role = 'user';
     }
@@ -48,18 +46,22 @@ export const AuthProvider = ({ children }) => {
     setUserRole(role);
     localStorage.setItem('mockUser', JSON.stringify(user));
     localStorage.setItem('mockRole', role);
-    return role; // Return role so Login page knows where to redirect
+    return role; 
   };
 
-  // --- DUMMY SIGNUP FUNCTION ---
-  const signup = (name, email, password) => {
+  // --- FIXED SIGNUP FUNCTION ---
+  // Added 'role' parameter (default to 'user' if missing)
+  const signup = (name, email, password, role = 'user') => {
     const newUser = { uid: 'user' + Date.now(), email, displayName: name };
     
     // Auto-login after signup
     setCurrentUser(newUser);
-    setUserRole('user');
+    
+    // ✅ FIX: Use the passed 'role' instead of hardcoding 'user'
+    setUserRole(role); 
+    
     localStorage.setItem('mockUser', JSON.stringify(newUser));
-    localStorage.setItem('mockRole', 'user');
+    localStorage.setItem('mockRole', role); // ✅ Save the correct role
   };
 
   // --- LOGOUT FUNCTION ---

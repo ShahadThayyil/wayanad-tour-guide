@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  FaUser, FaPhone, FaMapMarkerAlt, FaEnvelope, FaCamera, FaSave, FaStar, FaIdBadge, 
-  FaBriefcase, FaLanguage, FaPen, FaRupeeSign 
+  FaUser, FaPhone, FaMapMarkerAlt, FaEnvelope, FaCamera, FaSave, FaIdBadge, 
+  FaBriefcase, FaLanguage, FaPen 
 } from 'react-icons/fa';
-import { guidesData } from '../../data/mockData'; // Import Mock Data
+import { guidesData } from '../../data/mockData'; 
 
 const MyProfile = () => {
   
@@ -14,13 +14,13 @@ const MyProfile = () => {
   // State for form fields (pre-filled with mock data)
   const [formData, setFormData] = useState({
     name: myData.name,
-    email: "rahul.guide@wayanad.com", // Mock email (not in original object)
-    phone: "+91 9876543210", // Mock phone
+    email: "rahul.guide@wayanad.com", 
+    phone: "+91 9876543210", 
     experience: myData.experience,
     languages: myData.languages.join(", "),
-    rate: myData.rate,
+    // rate removed
     bio: myData.bio,
-    location: "Edakkal Caves, Wayanad" // Mock location
+    location: "Edakkal Caves, Wayanad" 
   });
 
   const handleInputChange = (e) => {
@@ -57,7 +57,7 @@ const MyProfile = () => {
           My Profile
         </h1>
         <p className="text-[#5A6654] text-sm leading-relaxed">
-          Manage your public profile, contact details, and rates visible to tourists.
+          Manage your public profile and contact details visible to tourists.
         </p>
       </motion.div>
 
@@ -85,10 +85,7 @@ const MyProfile = () => {
                  <FaIdBadge /> <span>Guide ID: {myData.id}</span>
               </div>
 
-              <div className="flex gap-1 text-[#D4AF37] text-sm mb-6">
-                 <FaStar /><FaStar /><FaStar /><FaStar /><FaStar className="text-[#D4AF37]/40" />
-                 <span className="text-[#2B3326] font-bold ml-2">4.8</span>
-              </div>
+              {/* RATING REMOVED HERE */}
 
               <div className="w-full pt-6 border-t border-[#DEDBD0] flex justify-between text-xs font-bold text-[#5A6654] uppercase tracking-widest">
                  <span>Status</span>
@@ -176,28 +173,18 @@ const MyProfile = () => {
                     </div>
                  </div>
 
+                 {/* DAILY RATE INPUT REMOVED */}
+                 
                  <div className="group">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] mb-2 block">Daily Rate (₹)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] mb-2 block">Service Location</label>
                     <div className="relative">
-                       <FaRupeeSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5A6654]" />
+                       <FaMapMarkerAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5A6654]" />
                        <input 
-                         type="number" name="rate"
-                         value={formData.rate} onChange={handleInputChange}
+                         type="text" name="location"
+                         value={formData.location} onChange={handleInputChange}
                          className="w-full bg-[#E2E6D5] rounded-xl py-3 pl-12 pr-4 text-sm font-medium text-[#2B3326] outline-none border border-transparent focus:border-[#3D4C38] transition-all"
                        />
                     </div>
-                 </div>
-              </div>
-
-              <div className="group">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] mb-2 block">Service Location</label>
-                 <div className="relative">
-                    <FaMapMarkerAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5A6654]" />
-                    <input 
-                      type="text" name="location"
-                      value={formData.location} onChange={handleInputChange}
-                      className="w-full bg-[#E2E6D5] rounded-xl py-3 pl-12 pr-4 text-sm font-medium text-[#2B3326] outline-none border border-transparent focus:border-[#3D4C38] transition-all"
-                    />
                  </div>
               </div>
 
