@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaArrowLeft, FaEnvelope, FaLock, FaGoogle, FaArrowRight } from 'react-icons/fa';
+import { FaArrowLeft, FaEnvelope,  FaGoogle, FaArrowRight , FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext'; // Import Auth Context
 
 const Login = () => {
@@ -9,6 +9,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false); // 1. Add State
   
   // Get login function from our Mock Context
   const { login } = useAuth(); 
@@ -96,19 +97,29 @@ const Login = () => {
                    </div>
 
                    {/* Password Input */}
-                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] ml-1">Password</label>
-                      <div className="relative group">
-                         <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#3D4C38]/50 group-focus-within:text-[#3D4C38] transition-colors" />
-                         <input 
-                           type="password" 
-                           placeholder="••••••••" 
-                           required 
-                           className="w-full bg-[#E2E6D5]/50 border border-[#DEDBD0] focus:border-[#3D4C38] rounded-xl py-3 pl-12 pr-4 text-sm text-[#2B3326] outline-none transition-all placeholder:text-[#5A6654]/40"
-                           onChange={(e) => setPassword(e.target.value)}
-                         />
-                      </div>
-                   </div>
+                  <div className="space-y-1.5">
+  <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] ml-1">Password</label>
+  <div className="relative group">
+    <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#3D4C38]/50 group-focus-within:text-[#3D4C38] transition-colors" />
+    
+    <input 
+      type={showPassword ? "text" : "password"} // 2. Dynamic Type
+      placeholder="••••••••" 
+      required 
+      className="w-full bg-[#E2E6D5]/50 border border-[#DEDBD0] focus:border-[#3D4C38] rounded-xl py-3 pl-12 pr-12 text-sm text-[#2B3326] outline-none transition-all placeholder:text-[#5A6654]/40"
+      onChange={(e) => setPassword(e.target.value)}
+    />
+
+    {/* 3. Toggle Button */}
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3D4C38]/50 hover:text-[#3D4C38] transition-colors cursor-pointer outline-none"
+    >
+      {showPassword ? <FaEyeSlash /> : <FaEye />}
+    </button>
+  </div>
+</div>
 
                    {/* Submit Button */}
                    <button 

@@ -26,7 +26,7 @@ const AdminLayout = () => {
   };
 
   return (
-    // Outer Container: Fixed Screen Height
+    // Outer Container: Fixed Screen Height | Body Font: Poppins
     <div className="flex h-screen bg-[#E2E6D5] text-[#2B3326] font-['Poppins'] overflow-hidden selection:bg-[#3D4C38] selection:text-[#F3F1E7]">
       
       {/* --- BACKGROUND TEXTURE --- */}
@@ -41,9 +41,10 @@ const AdminLayout = () => {
              <div className="w-8 h-8 bg-[#D4AF37] text-[#2B3326] rounded-lg flex items-center justify-center shadow-lg">
                 <FaTree className="text-sm" />
              </div>
+             {/* Header Font: Oswald */}
              <h2 className="text-2xl font-['Oswald'] font-bold tracking-widest uppercase">Admin</h2>
           </div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1E7]/50 pl-11">Control Panel</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1E7]/50 pl-11 font-['Oswald']">Control Panel</p>
         </div>
 
         {/* Navigation */}
@@ -67,7 +68,8 @@ const AdminLayout = () => {
                 <span className={`text-lg relative z-10 ${isActive ? 'text-[#3D4C38]' : 'text-[#F3F1E7]/60 group-hover:text-[#D4AF37]'}`}>
                   {item.icon}
                 </span>
-                <span className="font-bold text-sm tracking-wide relative z-10">
+                {/* Menu Item Font: Oswald */}
+                <span className="font-['Oswald'] font-bold text-sm uppercase tracking-wider relative z-10">
                   {item.label}
                 </span>
               </Link>
@@ -82,7 +84,8 @@ const AdminLayout = () => {
             className="w-full flex items-center gap-3 px-6 py-3 text-[#F3F1E7]/60 hover:text-[#FF6B6B] transition-colors rounded-xl hover:bg-[#F3F1E7]/5"
           >
             <FaSignOutAlt />
-            <span className="text-xs font-bold uppercase tracking-widest">Logout</span>
+            {/* Button Font: Oswald */}
+            <span className="font-['Oswald'] text-xs font-bold uppercase tracking-widest">Logout</span>
           </button>
         </div>
       </aside>
@@ -92,7 +95,6 @@ const AdminLayout = () => {
       <main className="flex-1 flex flex-col relative z-10 min-w-0 bg-[#E2E6D5]">
         
         {/* Scrollable Container */}
-        {/* REMOVED: The <div className="md:hidden h-20..."> spacer block */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 lg:p-12 pb-32 md:pb-12">
            <Outlet />
         </div>
@@ -149,9 +151,11 @@ const AdminLayout = () => {
                 <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
                   <FaSignOutAlt />
                 </div>
+                {/* Modal Header: Oswald */}
                 <h3 className="text-2xl font-['Oswald'] font-bold text-[#2B3326] uppercase mb-2">
                   Signing Out?
                 </h3>
+                {/* Modal Body: Poppins (inherited) */}
                 <p className="text-[#5A6654] text-sm leading-relaxed mb-8">
                   Are you sure you want to end your session? You will need to login again to access the admin panel.
                 </p>
@@ -159,13 +163,15 @@ const AdminLayout = () => {
                 <div className="flex gap-3">
                   <button 
                     onClick={() => setShowLogout(false)}
-                    className="flex-1 py-3 bg-[#E2E6D5] text-[#5A6654] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#DEDBD0] transition-colors"
+                    // Button Font: Oswald
+                    className="flex-1 py-3 bg-[#E2E6D5] text-[#5A6654] font-['Oswald'] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#DEDBD0] transition-colors"
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={handleLogout}
-                    className="flex-1 py-3 bg-red-500 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-red-600 transition-colors shadow-lg flex items-center justify-center gap-2"
+                    // Button Font: Oswald
+                    className="flex-1 py-3 bg-red-500 text-white font-['Oswald'] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-red-600 transition-colors shadow-lg flex items-center justify-center gap-2"
                   >
                     Logout
                   </button>

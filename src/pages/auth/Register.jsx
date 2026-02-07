@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaArrowLeft, FaUser, FaEnvelope, FaLock, FaIdBadge, FaGoogle, FaArrowRight } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaEnvelope, FaLock,FaEye, FaIdBadge, FaGoogle, FaArrowRight, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
@@ -10,6 +10,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
   const navigate = useNavigate();
   
   const { signup } = useAuth(); 
@@ -118,19 +119,34 @@ const Register = () => {
                    </div>
 
                    {/* Password */}
-                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] ml-1">Password</label>
-                      <div className="relative group">
-                         <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#3D4C38]/40 group-focus-within:text-[#3D4C38] transition-colors" />
-                         <input 
-                           type="password" 
-                           placeholder="••••••••" 
-                           required 
-                           className="w-full bg-[#E2E6D5]/30 border border-[#DEDBD0] focus:border-[#3D4C38] focus:bg-white rounded-xl py-3 pl-11 pr-4 text-sm text-[#2B3326] outline-none transition-all placeholder:text-[#5A6654]/40"
-                           onChange={(e) => setPassword(e.target.value)}
-                         />
-                      </div>
-                   </div>
+                  {/* Make sure to add this state at the top of your component: */}
+{/* const [showPassword, setShowPassword] = useState(false); */}
+
+<div className="space-y-1.5">
+   <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] ml-1">Password</label>
+   <div className="relative group">
+      {/* Lock Icon (Left) */}
+      <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#3D4C38]/40 group-focus-within:text-[#3D4C38] transition-colors" />
+      
+      <input 
+        type={showPassword ? "text" : "password"} 
+        placeholder="••••••••" 
+        required 
+        // Changed pr-4 to pr-12 to make room for the eye icon
+        className="w-full bg-[#E2E6D5]/30 border border-[#DEDBD0] focus:border-[#3D4C38] focus:bg-white rounded-xl py-3 pl-11 pr-12 text-sm text-[#2B3326] outline-none transition-all placeholder:text-[#5A6654]/40"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      {/* Show/Hide Toggle Button (Right) */}
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3D4C38]/40 hover:text-[#3D4C38] transition-colors cursor-pointer outline-none"
+      >
+        {showPassword ? <FaEyeSlash /> : <FaEye />}
+      </button>
+   </div>
+</div>
 
                    {/* Role Select */}
                    <div className="space-y-1.5">
