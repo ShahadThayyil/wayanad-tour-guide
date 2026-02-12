@@ -232,6 +232,29 @@ const ManageUsers = () => {
                                     >
                                        <FaTrash size={12} />
                                     </button>
+
+                                    {user.role !== 'admin' && (
+                                       <button
+                                          onClick={async () => {
+                                             if (window.confirm(`Promote ${user.name} to Admin?`)) {
+                                                try {
+                                                   const { setDocument } = await import('../../firebase/db');
+                                                   await setDocument('users', user.id, { role: 'admin' });
+                                                   alert("User promoted to Admin!");
+                                                   // Remove from list as this list filters out admins
+                                                   setUsers(users.filter(u => u.id !== user.id));
+                                                } catch (e) {
+                                                   console.error(e);
+                                                   alert("Failed to promote user.");
+                                                }
+                                             }
+                                          }}
+                                          className="ml-2 p-2 rounded-lg bg-[#E2E6D5] text-[#3D4C38] hover:bg-[#3D4C38] hover:text-[#F3F1E7] transition-colors opacity-60 group-hover:opacity-100"
+                                          title="Promote to Admin"
+                                       >
+                                          <FaUserCircle size={12} />
+                                       </button>
+                                    )}
                                  </td>
                               </motion.tr>
                            ))
@@ -293,6 +316,27 @@ const ManageUsers = () => {
                            >
                               <FaTrash size={12} /> Remove User
                            </button>
+
+                           {user.role !== 'admin' && (
+                              <button
+                                 onClick={async () => {
+                                    if (window.confirm(`Promote ${user.name} to Admin?`)) {
+                                       try {
+                                          const { setDocument } = await import('../../firebase/db');
+                                          await setDocument('users', user.id, { role: 'admin' });
+                                          alert("User promoted to Admin!");
+                                          setUsers(users.filter(u => u.id !== user.id));
+                                       } catch (e) {
+                                          console.error(e);
+                                          alert("Failed to promote user.");
+                                       }
+                                    }
+                                 }}
+                                 className="w-full py-3 rounded-lg bg-[#3D4C38]/10 text-[#3D4C38] hover:bg-[#3D4C38] hover:text-[#F3F1E7] transition-colors text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 mt-2"
+                              >
+                                 <FaUserCircle size={12} /> Make Admin
+                              </button>
+                           )}
                         </motion.div>
                      ))
                   ) : (

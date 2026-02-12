@@ -42,6 +42,12 @@ const ManagePlaces = () => {
    const handleImageChange = async (e, type) => {
       const file = e.target.files[0];
       if (file) {
+         // Validate File Size (Max 800KB to be safe for Firestore 1MB limit)
+         if (file.size > 800 * 1024) {
+            alert("File is too large! Please choose an image under 800KB.");
+            return;
+         }
+
          try {
             const base64 = await convertToBase64(file);
             if (type === 'cover') {
@@ -51,6 +57,7 @@ const ManagePlaces = () => {
             }
          } catch (error) {
             console.error("Error converting image:", error);
+            alert("Error processing image.");
          }
       }
    };
@@ -88,7 +95,7 @@ const ManagePlaces = () => {
 
       } catch (error) {
          console.error("Error adding place:", error);
-         alert("Failed to add place");
+         alert(`Failed to add place: ${error.message}`);
       }
    };
 

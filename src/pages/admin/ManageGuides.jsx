@@ -77,6 +77,12 @@ const ManageGuides = () => {
    const handleImageUpload = async (e) => {
       const file = e.target.files[0];
       if (file) {
+         // Validate File Size (Max 400KB individual limit)
+         if (file.size > 400 * 1024) {
+            alert("File is too large! Please choose an image under 400KB.");
+            return;
+         }
+
          try {
             const base64 = await convertToBase64(file);
             setGuideImage(base64);
@@ -102,6 +108,17 @@ const ManageGuides = () => {
             image: guideImage || "https://via.placeholder.com/150" // Fallback image
          };
 
+         // --- CRITICAL FIRESTORE SIZE CHECK ---
+         // Firestore Limit: 1MB (1,048,576 bytes)
+         const jsonString = JSON.stringify(guideData);
+         const sizeInBytes = new TextEncoder().encode(jsonString).length;
+         const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+
+         if (sizeInBytes > 950000) { // Limit to ~950KB
+            alert(`Total data size (${sizeInMB} MB) exceeds limit (0.95 MB). Use a smaller profile image.`);
+            return;
+         }
+
          const docId = await addDocument('guides', guideData);
          setGuides([...guides, { id: docId, ...guideData }]);
 
@@ -111,7 +128,7 @@ const ManageGuides = () => {
          setShowAddForm(false);
       } catch (error) {
          console.error("Error adding guide:", error);
-         alert("Failed to add guide");
+         alert(`Failed to add guide: ${error.message}`);
       }
    };
 
