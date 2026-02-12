@@ -6,20 +6,36 @@ import { fetchCollection } from '../../firebase/db';
 
 const Explore = () => {
   const [places, setPlaces] = useState([]);
+  const [guideCounts, setGuideCounts] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadPlaces = async () => {
+    const loadPlacesAndGuides = async () => {
       try {
-        const data = await fetchCollection('places');
-        setPlaces(data);
+        const [placesData, guidesData] = await Promise.all([
+          fetchCollection('places'),
+          fetchCollection('guides')
+        ]);
+
+        // Calculate guide counts per place
+        const counts = {};
+        guidesData.forEach(guide => {
+          if (guide.placeId) {
+            const pid = guide.placeId;
+            counts[pid] = (counts[pid] || 0) + 1;
+          }
+        });
+
+        setPlaces(placesData);
+        setGuideCounts(counts);
+
       } catch (error) {
-        console.error("Error fetching places:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
-    loadPlaces();
+    loadPlacesAndGuides();
   }, []);
 
   return (
@@ -47,7 +63,7 @@ const Explore = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-stretch">
             {places.map((place, index) => (
-              <PlaceCard key={place.id} place={place} index={index} />
+              <PlaceCard key={place.id} place={place} index={index} guideCount={guideCounts[place.id] || 0} />
             ))}
           </div>
         )}
@@ -56,7 +72,7 @@ const Explore = () => {
   );
 };
 
-const PlaceCard = ({ place, index }) => {
+const PlaceCard = ({ place, index, guideCount }) => {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
 
@@ -64,9 +80,6 @@ const PlaceCard = ({ place, index }) => {
   const handleNavigate = () => {
     navigate(`/place/${place.id}`, { state: { place } });
   };
-
-  // Mock Guide Count (or fetch if available in place data)
-  const guideCount = Math.floor(Math.random() * 6) + 3;
 
   return (
     <motion.div
