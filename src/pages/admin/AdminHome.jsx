@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { FaUsers, FaMapMarkedAlt, FaCalendarCheck, FaArrowUp, FaArrowDown, FaEllipsisH } from 'react-icons/fa';
 import { fetchCollection } from '../../firebase/db';
+import { Link } from 'react-router-dom';
 
 const COLORS = ['#3D4C38', '#8B9D77', '#D4AF37']; // Olive, Sage, Gold
 
@@ -114,21 +115,21 @@ const AdminHome = () => {
         <StatCard
           title="Total Users"
           value={stats.users}
-          change="+12%"
+          // change="+12%"
           isPositive={true}
           icon={<FaUsers />}
         />
         <StatCard
           title="Total Bookings"
           value={stats.bookings}
-          change="+8%"
+          // change="+8%"
           isPositive={true}
           icon={<FaCalendarCheck />}
         />
         <StatCard
           title="Active Guides"
           value={stats.guides}
-          change="+2"
+          // change="+2"
           isPositive={true}
           icon={<FaMapMarkedAlt />}
         />
@@ -179,7 +180,7 @@ const AdminHome = () => {
         >
           <div className="p-6 border-b border-[#DEDBD0] flex justify-between items-center">
             <h3 className="font-['Oswald'] font-bold text-xl text-[#2B3326] uppercase">Recent Bookings</h3>
-            <button className="text-xs font-bold text-[#3D4C38] uppercase tracking-widest hover:underline">View All</button>
+         <Link to="/admin/bookings">   <button className="text-xs font-bold text-[#3D4C38] uppercase tracking-widest hover:underline">View All</button></Link>
           </div>
 
           <div className="overflow-x-auto flex-1">

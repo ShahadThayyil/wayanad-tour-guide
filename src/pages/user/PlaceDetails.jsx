@@ -5,7 +5,6 @@ import {
   FaArrowLeft, FaMapMarkerAlt, FaHistory, FaImages, FaUserTie, FaStar,
   FaArrowRight, FaClock, FaTicketAlt, FaCalendarAlt, FaLock
 } from 'react-icons/fa';
-// CHANGED: We only need fetchCollection now, removed fetchQuery/where for this specific task
 import { fetchCollection } from '../../firebase/db'; 
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,16 +17,13 @@ const PlaceDetails = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [guides, setGuides] = useState([]);
 
-  // Use passed state or fetch place (Logic to fetch place by ID could be added here if state is null)
   const place = state?.place;
 
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    // --- UPDATED: FETCH ALL GUIDES (COMMON FOR ALL PLACES) ---
     const loadGuides = async () => {
       try {
-        // CHANGED: Fetch ALL guides instead of filtering by placeId
         const data = await fetchCollection('guides');
         setGuides(data);
       } catch (error) {
@@ -36,7 +32,7 @@ const PlaceDetails = () => {
     };
     loadGuides();
 
-  }, []); // Empty dependency array means this loads once when page opens
+  }, []);
 
   if (!place) return <div className="min-h-screen flex items-center justify-center text-[#3D4C38] font-bold">Place not found</div>;
 
@@ -47,6 +43,14 @@ const PlaceDetails = () => {
       setShowLoginModal(true);
     }
   };
+
+  // --- FIXED: Working Default Google Maps Embed Link for Wayanad ---
+  const DEFAULT_MAP_URL = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d26113.67675864007!2d76.6934216!3d11.411852600000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba8bd84b5f3d78d%3A0x179bdb14c93e3f42!2sOoty%2C%20Tamil%20Nadu%2C%20India!5e1!3m2!1sen!2s!4v1771600821800!5m2!1sen!2s";
+  
+  // Safety check: Ensure the place link actually exists and has http/https
+  const mapSrc = (place.locationUrl && place.locationUrl.startsWith('http')) 
+    ? place.locationUrl 
+    : DEFAULT_MAP_URL;
 
   return (
     <div className="min-h-screen bg-[#E2E6D5] text-[#2B3326] font-['Poppins'] pb-20 selection:bg-[#3D4C38] selection:text-[#F3F1E7]">
@@ -174,9 +178,12 @@ const PlaceDetails = () => {
             <div className="bg-[#F3F1E7] p-4 rounded-[2.5rem] shadow-lg border border-[#DEDBD0] overflow-hidden h-[300px] relative group">
               <iframe
                 title="map"
-                src={place.locationUrl || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31307.54564299863!2d76.220678!3d11.624775!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba60ea1887019d5%3A0xc3f8e58f04c62c4!2sEdakkal%20Caves!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"}
+                src={mapSrc}
                 className="w-full h-full rounded-[2rem] grayscale group-hover:grayscale-0 transition-all duration-500"
                 loading="lazy"
+                allowFullScreen=""
+                referrerPolicy="no-referrer-when-downgrade"
+                style={{ border: 0 }}
               ></iframe>
               <div className="absolute bottom-6 left-6 pointer-events-none bg-[#3D4C38] px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest text-[#F3F1E7] shadow-lg">
                 View on Map

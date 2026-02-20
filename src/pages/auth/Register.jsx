@@ -28,12 +28,14 @@ const Register = () => {
   // Image State
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError] = useState(null); // NEW: Specific image error tracking
 
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const availableLanguages = ["English", "Malayalam", "Hindi", "Tamil", "Arabic", "French"];
 
   // --- UI STATE ---
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState(''); // NEW: Dynamic loading indicator text
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({});
   const [errors, setErrors] = useState({});
@@ -61,10 +63,31 @@ const Register = () => {
     });
   };
 
-  // Image Handler
+  // Image Handler (UPDATED: Added instant validation for type and size)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
+    setImageError(null); // Reset error on new selection
+
     if (file) {
+      // 1. Validate File Type
+      if (!file.type.startsWith('image/')) {
+        setImageError('Please select a valid image file (JPG, PNG).');
+        setProfileImage(null);
+        setImagePreview(null);
+        setTouched(prev => ({ ...prev, profileImage: true }));
+        return;
+      }
+
+      // 2. Validate File Size (Max 800KB)
+      if (file.size > 800 * 1024) {
+        setImageError('File is too large! Please choose an image under 800KB.');
+        setProfileImage(null);
+        setImagePreview(null);
+        setTouched(prev => ({ ...prev, profileImage: true }));
+        return;
+      }
+
+      // 3. Set Valid Image
       setProfileImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -80,6 +103,7 @@ const Register = () => {
     e.stopPropagation();
     setProfileImage(null);
     setImagePreview(null);
+    setImageError(null);
   };
 
   // --- LIVE VALIDATION ---
@@ -127,11 +151,14 @@ const Register = () => {
       else if (formData.bio.trim().length < 20) newErrors.bio = "Bio is too short (min 20 chars)";
 
       if (selectedLanguages.length === 0) newErrors.languages = "Select at least one language";
-      if (!profileImage) newErrors.profileImage = "Profile picture is required";
+      
+      // UPDATED: Prioritize specific image errors from handleImageChange
+      if (imageError) newErrors.profileImage = imageError;
+      else if (!profileImage) newErrors.profileImage = "Profile picture is required";
     }
 
     setErrors(newErrors);
-  }, [formData, role, selectedLanguages, profileImage]);
+  }, [formData, role, selectedLanguages, profileImage, imageError]);
 
 
   // --- MAIN REGISTRATION LOGIC ---
@@ -143,31 +170,26 @@ const Register = () => {
     if (Object.keys(errors).length > 0) return;
 
     setIsLoading(true);
+    setLoadingText('Creating Account...'); // Dynamic Loading Text
 
     try {
       // 1. Create Auth User
-      // This creates the user in Firebase Auth and writes the basic 'users' doc
       const user = await signup(formData.name, formData.email, formData.password, role);
 
       // 2. If Guide, create 'guides' doc
       if (role === 'guide' && user) {
         let imageBase64 = "https://via.placeholder.com/150";
 
-        // FIX: Check image size before converting
-        // Firestore has a 1MB limit for documents. Large images cause the "Stuck Loading" issue.
         if (profileImage) {
-          if (profileImage.size > 800 * 1024) { // Limit to 800KB to be safe
-             console.warn("Image too large, using default.");
-             alert("Your profile image is too large (Limit 800KB). A default image was used. You can update it later in your profile.");
-          } else {
-             try {
-               imageBase64 = await convertToBase64(profileImage);
-             } catch (err) {
-               console.error("Image conversion failed, using default:", err);
-             }
+          setLoadingText('Processing Image...'); // Dynamic Loading Text
+          try {
+            imageBase64 = await convertToBase64(profileImage);
+          } catch (err) {
+            console.error("Image conversion failed, using default:", err);
           }
         }
 
+        setLoadingText('Saving Guide Details...'); // Dynamic Loading Text
         const guideData = {
           name: formData.name,
           email: formData.email,
@@ -188,11 +210,11 @@ const Register = () => {
         await setDocument('guides', user.uid, guideData);
       }
 
+      setLoadingText('Redirecting...');
       // 3. Navigation (Success)
-      setIsLoading(false); // Stop loading before navigating
+      setIsLoading(false); 
 
       if (role === 'guide') {
-        // FIX: Force redirect to guide dashboard with replace
         navigate('/guide', { replace: true });
       } else {
         navigate('/', { replace: true });
@@ -200,7 +222,8 @@ const Register = () => {
 
     } catch (error) {
       console.error("Registration Error:", error);
-      setIsLoading(false); // Stop loading on error
+      setIsLoading(false); 
+      setLoadingText('');
 
       if (error.code === 'auth/email-already-in-use') {
         alert("This email is already registered. Please Login.");
@@ -327,7 +350,7 @@ const Register = () => {
                                 <FaCamera size={24} />
                               </div>
                               <p className="text-xs text-[#5A6654]">Click to upload image</p>
-                              <p className="text-[10px] text-[#5A6654]/60 mt-1">Recommended: 3:4 Aspect Ratio</p>
+                              <p className="text-[10px] text-[#5A6654]/60 mt-1">Recommended: 3:4 Aspect Ratio (Max: 800KB)</p>
                             </>
                           )}
 
@@ -398,8 +421,20 @@ const Register = () => {
                   )}
                 </AnimatePresence>
 
-                <button type="submit" disabled={isLoading || Object.keys(errors).length > 0} className="w-full bg-[#3D4C38] text-[#F3F1E7] py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#2B3326] transition-all shadow-lg flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {isLoading ? <span className="w-4 h-4 border-2 border-[#F3F1E7] border-t-transparent rounded-full animate-spin"></span> : <>Register <FaArrowRight /></>}
+                {/* UPDATED SUBMIT BUTTON */}
+                <button 
+                  type="submit" 
+                  disabled={isLoading || Object.keys(errors).length > 0} 
+                  className="w-full bg-[#3D4C38] text-[#F3F1E7] py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#2B3326] transition-all shadow-lg flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-[#F3F1E7] border-t-transparent rounded-full animate-spin"></span>
+                      <span>{loadingText || "Processing..."}</span>
+                    </div>
+                  ) : (
+                    <>Register <FaArrowRight /></>
+                  )}
                 </button>
 
               </form>
@@ -411,7 +446,7 @@ const Register = () => {
         {/* --- RIGHT: IMAGE --- */}
         <div className="hidden lg:block w-1/2 h-full relative overflow-hidden bg-[#E2E6D5]">
           <motion.div initial={{ scale: 1.15 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} className="absolute inset-0 h-full w-full">
-            <img src="https://i.pinimg.com/736x/1b/e0/07/1be007fc4c429641c747215df72d8bc9.jpg" alt="Wayanad" className="w-full h-full object-cover" />
+            <img src="https://res.cloudinary.com/dmtzmgbkj/image/upload/f_webp/v1771605874/Gemini_Generated_Image_4r83n94r83n94r83_1_o7ajdi.png" alt="Wayanad" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#1F261C]/90 via-[#1F261C]/20 to-transparent opacity-80"></div>
           </motion.div>
           <div className="absolute bottom-14 left-14 right-14 text-[#F3F1E7] z-10">

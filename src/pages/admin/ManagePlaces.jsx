@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaMapMarkedAlt, FaPlus, FaTrash, FaImage, FaPen, FaSearch, FaClock, FaHistory, FaTicketAlt, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
+import { FaMapMarkedAlt, FaPlus, FaTrash, FaImage, FaPen, FaSearch, FaClock, FaHistory, FaTicketAlt, FaCloudUploadAlt, FaTimes, FaLink, FaExclamationTriangle } from 'react-icons/fa';
 import {
    fetchCollection, addDocument, deleteDocument, convertToBase64
 } from '../../firebase/db';
@@ -10,6 +10,11 @@ const ManagePlaces = () => {
    const [searchTerm, setSearchTerm] = useState('');
    const [loading, setLoading] = useState(true);
 
+   // --- NEW STATES FOR LOADING, NOTIFICATION, AND MODAL ---
+   const [isSubmitting, setIsSubmitting] = useState(false);
+   const [notification, setNotification] = useState(null);
+   const [deleteModal, setDeleteModal] = useState({ isOpen: false, placeId: null });
+
    // New State for Place Form
    const [newPlace, setNewPlace] = useState({
       name: '',
@@ -18,7 +23,7 @@ const ManagePlaces = () => {
       ticketPrice: '',
       openTime: '',
       closeTime: '',
-      locationUrl: ''
+      locationUrl: '' // Map Embed Link
    });
 
    const [coverImage, setCoverImage] = useState(null);
@@ -39,12 +44,20 @@ const ManagePlaces = () => {
       loadPlaces();
    }, []);
 
+   // Helper to clear notification after 3 seconds
+   useEffect(() => {
+      if (notification) {
+         const timer = setTimeout(() => setNotification(null), 3000);
+         return () => clearTimeout(timer);
+      }
+   }, [notification]);
+
    const handleImageChange = async (e, type) => {
       const file = e.target.files[0];
       if (file) {
-         // Validate File Size (Max 800KB to be safe for Firestore 1MB limit)
+         // Validate File Size (Max 800KB)
          if (file.size > 800 * 1024) {
-            alert("File is too large! Please choose an image under 800KB.");
+            setNotification({ type: 'error', message: "File is too large! Please choose an image under 800KB." });
             return;
          }
 
@@ -57,7 +70,7 @@ const ManagePlaces = () => {
             }
          } catch (error) {
             console.error("Error converting image:", error);
-            alert("Error processing image.");
+            setNotification({ type: 'error', message: "Error processing image." });
          }
       }
    };
@@ -70,9 +83,11 @@ const ManagePlaces = () => {
       e.preventDefault();
 
       if (!newPlace.name) {
-         alert("Place Title is required");
+         setNotification({ type: 'error', message: "Place Title is required" });
          return;
       }
+
+      setIsSubmitting(true);
 
       try {
          const placeData = {
@@ -91,23 +106,37 @@ const ManagePlaces = () => {
          });
          setCoverImage(null);
          setGalleryImages([]);
-         alert("Destination Added Successfully!");
+         
+         // SUCCESS NOTIFICATION
+         setNotification({ type: 'success', message: "Destination Published Successfully!" });
 
       } catch (error) {
          console.error("Error adding place:", error);
-         alert(`Failed to add place: ${error.message}`);
+         setNotification({ type: 'error', message: `Failed to add place: ${error.message}` });
+      } finally {
+         setIsSubmitting(false);
       }
    };
 
-   const handleDeletePlace = async (id) => {
-      if (window.confirm("Delete this destination?")) {
-         try {
-            await deleteDocument('places', id);
-            setPlaces(places.filter(p => p.id !== id));
-         } catch (error) {
-            console.error("Error deleting place:", error);
-            alert("Failed to delete place");
-         }
+   // --- CUSTOM DELETE LOGIC ---
+   const triggerDelete = (id) => {
+      setDeleteModal({ isOpen: true, placeId: id });
+   };
+
+   const confirmDelete = async () => {
+      const id = deleteModal.placeId;
+      setIsSubmitting(true);
+      
+      try {
+         await deleteDocument('places', id);
+         setPlaces(places.filter(p => p.id !== id));
+         setNotification({ type: 'success', message: "Destination Deleted." });
+      } catch (error) {
+         console.error("Error deleting place:", error);
+         setNotification({ type: 'error', message: "Failed to delete place" });
+      } finally {
+         setIsSubmitting(false);
+         setDeleteModal({ isOpen: false, placeId: null });
       }
    };
 
@@ -118,7 +147,62 @@ const ManagePlaces = () => {
    if (loading) return <div className="text-center p-10">Loading Destinations...</div>;
 
    return (
-      <div className="w-full pb-20 space-y-8">
+      <div className="w-full pb-20 space-y-8 relative">
+
+         {/* --- NOTIFICATION BANNER --- */}
+         <AnimatePresence>
+            {notification && (
+               <motion.div
+                  initial={{ opacity: 0, y: -20, x: '-50%' }}
+                  animate={{ opacity: 1, y: 0, x: '-50%' }}
+                  exit={{ opacity: 0, y: -20, x: '-50%' }}
+                  className={`fixed top-4 left-1/2 z-[100] px-6 py-4 rounded-xl shadow-2xl border flex items-center gap-3 font-bold text-sm uppercase tracking-wide
+                     ${notification.type === 'error' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[#3D4C38] text-[#F3F1E7] border-[#2B3326]'}`}
+               >
+                  {notification.message}
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* --- DELETE CONFIRMATION MODAL --- */}
+         <AnimatePresence>
+            {deleteModal.isOpen && (
+               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F261C]/80 backdrop-blur-sm">
+                  <motion.div
+                     initial={{ opacity: 0, scale: 0.95 }}
+                     animate={{ opacity: 1, scale: 1 }}
+                     exit={{ opacity: 0, scale: 0.95 }}
+                     className="bg-[#F3F1E7] w-full max-w-sm rounded-2xl shadow-2xl border border-[#DEDBD0] overflow-hidden"
+                  >
+                     <div className="p-8 text-center">
+                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                           <FaExclamationTriangle />
+                        </div>
+                        <h3 className="text-2xl font-['Oswald'] font-bold text-[#2B3326] uppercase mb-2">Delete Destination</h3>
+                        <p className="text-[#5A6654] text-sm leading-relaxed mb-8">
+                           Are you sure you want to delete this place? This action cannot be undone.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                           <button
+                              onClick={confirmDelete}
+                              disabled={isSubmitting}
+                              className="w-full py-3 bg-red-500 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-red-600 transition-colors shadow-lg disabled:opacity-50"
+                           >
+                              {isSubmitting ? "Deleting..." : "Yes, Delete Place"}
+                           </button>
+                           <button
+                              onClick={() => setDeleteModal({ isOpen: false, placeId: null })}
+                              disabled={isSubmitting}
+                              className="w-full py-3 bg-transparent text-[#5A6654] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#DEDBD0]/50 transition-colors disabled:opacity-50"
+                           >
+                              Cancel
+                           </button>
+                        </div>
+                     </div>
+                  </motion.div>
+               </div>
+            )}
+         </AnimatePresence>
 
          {/* ==================== 1. HEADER ==================== */}
          <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-[#3D4C38]/10 pb-6">
@@ -147,7 +231,7 @@ const ManagePlaces = () => {
          {/* ==================== 2. MAIN CONTENT GRID ==================== */}
          <div className="flex flex-col lg:flex-row gap-8 items-start relative">
 
-            {/* --- LEFT: ADD PLACE FORM (Sticky Sidebar on Desktop Only) --- */}
+            {/* --- LEFT: ADD PLACE FORM --- */}
             <motion.div
                initial={{ opacity: 0, x: -20 }}
                animate={{ opacity: 1, x: 0 }}
@@ -181,6 +265,21 @@ const ManagePlaces = () => {
                         value={newPlace.description}
                         onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })}
                      ></textarea>
+                  </div>
+
+                  {/* Map Link */}
+                  <div>
+                     <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] block mb-1 flex items-center gap-2">
+                        <FaLink /> Google Map Embed URL
+                     </label>
+                     <input
+                        type="text"
+                        className="w-full bg-white border border-[#DEDBD0] rounded-lg p-3 text-sm text-[#2B3326] focus:border-[#3D4C38] outline-none font-mono text-xs"
+                        placeholder="Paste the src='...' link from Google Maps Embed"
+                        value={newPlace.locationUrl}
+                        onChange={(e) => setNewPlace({ ...newPlace, locationUrl: e.target.value })}
+                     />
+                     <p className="text-[9px] text-[#5A6654] mt-1 opacity-70">* Copy only the link inside src="..." from the Embed Map tab.</p>
                   </div>
 
                   <div>
@@ -271,20 +370,18 @@ const ManagePlaces = () => {
 
                   </div>
 
-                  {/* Map Link */}
-                  <div>
-                     <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] block mb-1">Google Map Embed URL</label>
-                     <input
-                        type="text"
-                        className="w-full bg-white border border-[#DEDBD0] rounded-lg p-3 text-sm text-[#2B3326] focus:border-[#3D4C38] outline-none"
-                        placeholder="<iframe> src link..."
-                        value={newPlace.locationUrl}
-                        onChange={(e) => setNewPlace({ ...newPlace, locationUrl: e.target.value })}
-                     />
-                  </div>
-
-                  <button type="submit" className="w-full py-4 bg-[#3D4C38] text-[#F3F1E7] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#2B3326] transition-all shadow-lg flex items-center justify-center gap-2 mt-4">
-                     <FaMapMarkedAlt /> Publish Location
+                  {/* SUBMIT BUTTON WITH LOADING STATE */}
+                  <button 
+                     type="submit" 
+                     disabled={isSubmitting}
+                     className={`w-full py-4 bg-[#3D4C38] text-[#F3F1E7] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#2B3326] transition-all shadow-lg flex items-center justify-center gap-2 mt-4
+                        ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  >
+                     {isSubmitting ? (
+                        <>Publishing...</>
+                     ) : (
+                        <><FaMapMarkedAlt /> Publish Location</>
+                     )}
                   </button>
                </form>
             </motion.div>
@@ -321,11 +418,9 @@ const ManagePlaces = () => {
 
                                  {/* Actions Overlay */}
                                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-[-10px] group-hover:translate-y-0 duration-300">
-                                    <button className="p-2 bg-[#F3F1E7] text-[#3D4C38] rounded-lg shadow-sm hover:bg-[#3D4C38] hover:text-[#F3F1E7] transition-colors" title="Edit">
-                                       <FaPen size={12} />
-                                    </button>
+                                    {/* Delete Button - Triggers Custom Modal */}
                                     <button
-                                       onClick={() => handleDeletePlace(place.id)}
+                                       onClick={() => triggerDelete(place.id)}
                                        className="p-2 bg-[#F3F1E7] text-red-500 rounded-lg shadow-sm hover:bg-red-500 hover:text-[#F3F1E7] transition-colors"
                                        title="Delete"
                                     >
@@ -352,7 +447,7 @@ const ManagePlaces = () => {
                                  </p>
 
                                  <div className="mt-auto border-t border-[#DEDBD0] pt-3 flex justify-between items-center text-[10px] font-bold text-[#3D4C38] uppercase tracking-widest">
-                                    <span>ID: ...{place.id.slice(-4)}</span>
+                                    <span className="truncate max-w-[100px]">{place.locationUrl ? "Map Linked" : "No Map"}</span>
                                     <span>{place.gallery?.length || 0} Photos</span>
                                  </div>
                               </div>

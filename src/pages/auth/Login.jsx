@@ -18,7 +18,9 @@ const Login = () => {
   const [errors, setErrors] = useState({});
 
   const navigate = useNavigate();
-  const { login } = useAuth(); 
+  
+  // NOTE: Added 'logout' here to force log them out if DB check fails
+  const { login, logout } = useAuth(); 
 
   // --- LIVE VALIDATION ---
   useEffect(() => {
@@ -49,19 +51,15 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // 1. Authenticate with Firebase Auth
-      // FIX: Your AuthContext returns the 'user' object directly, not the credential wrapper.
       const user = await login(email, password);
-      
-      console.log("Logged in user:", user.uid); // Debugging log
+      // console.log("Logged in user:", user.uid); 
 
-      // 2. Fetch User Role using your custom db.js helper
       try {
-        // We use user.uid directly here
+        // Attempt to fetch the user document
         const userData = await fetchDocument("users", user.uid);
-        const role = userData.role; // e.g., 'admin', 'guide'
+        const role = userData.role; 
         
-        console.log("User Role:", role); // Debugging log
+        // console.log("User Role:", role); 
 
         if (role === 'admin') {
           navigate('/admin');
@@ -71,9 +69,13 @@ const Login = () => {
           navigate('/');
         }
       } catch (dbError) {
+        // FIXED LOGIC: If DB fetch fails, the user was deleted from DB but not Auth.
         console.warn("User profile not found in database:", dbError);
-        // Fallback: If no role is found in DB, go to home
-        navigate('/'); 
+        
+        // Force logout so they don't stay authenticated as a ghost user
+        if (logout) await logout(); 
+        
+        setFormError("Account data not found. Please register again.");
       }
 
     } catch (error) {
@@ -88,11 +90,10 @@ const Login = () => {
     }
   };
 
-  // Helper for input styles
   const getInputClass = (fieldName) => `w-full bg-[#E2E6D5]/50 border ${touched[fieldName] && errors[fieldName] ? 'border-red-500 bg-red-50' : 'border-[#DEDBD0]'} focus:bg-white rounded-xl py-3 pl-12 pr-4 text-sm text-[#2B3326] outline-none transition-all placeholder:text-[#5A6654]/40 ${(!errors[fieldName] && touched[fieldName] && (fieldName === 'email' ? email : password)) ? 'border-green-500/50' : 'focus:border-[#3D4C38]'}`;
 
   return (
-    <div className="h-screen w-full bg-[#E2E6D5] text-[#2B3326] font-['Poppins'] flex items-center justify-center relative overflow-hidden selection:bg-[#3D4C38] selection:text-[#F3F1E7]">
+    <div className="min-h-screen w-full bg-[#E2E6D5] text-[#2B3326] font-['Poppins'] flex items-center justify-center relative overflow-hidden selection:bg-[#3D4C38] selection:text-[#F3F1E7] p-4 md:p-8">
       
       {/* --- BACKGROUND ELEMENTS --- */}
       <div className="absolute inset-0 opacity-[0.04] pointer-events-none z-0 bg-[url('https://www.transparenttextures.com/patterns/noise.png')]"></div>
@@ -104,13 +105,13 @@ const Login = () => {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 flex flex-col lg:flex-row bg-[#F3F1E7] overflow-hidden shadow-2xl shadow-[#3D4C38]/15 w-full h-full lg:w-[95%] lg:max-w-5xl lg:h-[85vh] lg:rounded-[2rem] lg:border border-[#DEDBD0]"
+        className="relative z-10 flex flex-col lg:flex-row bg-[#F3F1E7] overflow-hidden shadow-2xl shadow-[#3D4C38]/15 w-full max-w-5xl rounded-[2rem] border border-[#DEDBD0] h-auto lg:h-[85vh] max-h-[900px]"
       >
         
         {/* --- LEFT SIDE: FORM --- */}
-        <div className="w-full lg:w-[45%] h-full flex flex-col bg-[#F3F1E7] relative">
-           
-           <div className="flex-none pt-8 px-8 md:px-12 pb-4 z-20">
+        <div className="w-full lg:w-[45%] h-full flex flex-col bg-[#F3F1E7] relative min-h-[500px]">
+            
+           <div className="flex-none pt-6 md:pt-8 px-6 md:px-12 pb-2 md:pb-4 z-20">
              <Link 
                to="/" 
                className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#5A6654] hover:text-[#3D4C38] transition-colors group"
@@ -119,19 +120,19 @@ const Login = () => {
              </Link>
            </div>
 
-           <div className="flex-1 flex flex-col justify-center px-8 md:px-12 pb-12 overflow-y-auto custom-scrollbar">
+           <div className="flex-1 flex flex-col justify-center px-6 md:px-12 py-6 md:pb-12 overflow-y-auto custom-scrollbar">
              <div className="w-full max-w-sm mx-auto">
                
                <motion.div
                  initial={{ opacity: 0, y: 10 }}
                  animate={{ opacity: 1, y: 0 }}
                  transition={{ delay: 0.1 }}
-                 className="mb-8"
+                 className="mb-6 md:mb-8"
                >
                  <h1 className="text-3xl md:text-4xl font-['Oswald'] font-bold text-[#1F261C] uppercase leading-tight mb-2">
                    Welcome Back
                  </h1>
-                 <p className="text-[#5A6654] text-sm">
+                 <p className="text-[#5A6654] text-xs md:text-sm">
                    Enter your credentials to access your dashboard.
                  </p>
                </motion.div>
@@ -148,7 +149,7 @@ const Login = () => {
                  )}
                </AnimatePresence>
 
-               <form onSubmit={handleLogin} className="space-y-5" noValidate>
+               <form onSubmit={handleLogin} className="space-y-4 md:space-y-5" noValidate>
                    
                    <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] ml-1">Email</label>
@@ -194,7 +195,7 @@ const Login = () => {
                    <button 
                      type="submit" 
                      disabled={isLoading || (Object.keys(errors).length > 0 && touched.email)}
-                     className="w-full bg-[#3D4C38] text-[#F3F1E7] py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#2B3326] transition-all shadow-lg flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed mt-4"
+                     className="w-full bg-[#3D4C38] text-[#F3F1E7] py-3.5 md:py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#2B3326] transition-all shadow-lg flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed mt-2 md:mt-4"
                    >
                      {isLoading ? (
                        <span className="w-4 h-4 border-2 border-[#F3F1E7] border-t-transparent rounded-full animate-spin"></span>
@@ -205,7 +206,7 @@ const Login = () => {
 
                </form>
 
-               <p className="mt-8 text-center text-xs text-[#5A6654]">
+               <p className="mt-6 md:mt-8 text-center text-xs text-[#5A6654]">
                   Don't have an account? <Link to="/register" className="text-[#3D4C38] font-bold uppercase tracking-wide hover:underline">Register Now</Link>
                </p>
 
@@ -213,7 +214,7 @@ const Login = () => {
            </div>
         </div>
 
-        {/* --- RIGHT SIDE: VISUAL --- */}
+        {/* --- RIGHT SIDE: VISUAL (Hidden on Mobile) --- */}
         <div className="hidden lg:block w-[55%] h-full relative overflow-hidden bg-[#E2E6D5]">
            <motion.div 
              initial={{ scale: 1.1 }}
@@ -222,7 +223,7 @@ const Login = () => {
              className="absolute inset-0 h-full w-full"
            >
              <img 
-               src="https://media.istockphoto.com/id/1224099098/photo/dense-green-forest-with-blue-sky-and-dramatic-cloud-landscape.jpg?s=612x612&w=0&k=20&c=d71KVhNJPXkxALu3wsBK-iN6XIfzR77ZSUOhdVY6ciE=" 
+               src="https://res.cloudinary.com/dmtzmgbkj/image/upload/f_webp/v1771605775/Gemini_Generated_Image_9c639s9c639s9c63_1_j0yxyt.png" 
                alt="Wayanad Scenery" 
                className="w-full h-full object-cover"
              />
@@ -242,6 +243,23 @@ const Login = () => {
         </div>
 
       </motion.div>
+
+      {/* --- SCROLLBAR STYLE --- */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #DEDBD0;
+          border-radius: 50px;
+        }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+          background-color: #3D4C38;
+        }
+      `}</style>
     </div>
   );
 };

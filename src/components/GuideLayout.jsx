@@ -32,14 +32,12 @@ const GuideLayout = () => {
       <aside className="w-72 bg-[#2B3326] text-[#F3F1E7] hidden md:flex flex-col relative z-20 shadow-2xl shadow-[#3D4C38]/20 flex-shrink-0">
         <div className="p-8 border-b border-[#F3F1E7]/10">
           <div className="flex items-center gap-3 mb-1">
-             <div className="w-8 h-8 bg-[#8B9D77] text-[#2B3326] rounded-lg flex items-center justify-center shadow-lg">
-                <FaTree className="text-sm" />
-             </div>
+            
              {/* Header Font: Oswald */}
              <h2 className="text-2xl font-['Oswald'] font-bold tracking-widest uppercase">Guide</h2>
           </div>
           {/* Subheader Font: Oswald */}
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1E7]/50 pl-11 font-['Oswald']">Partner Portal</p>
+          {/* <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1E7]/50 pl-11 font-['Oswald']">Partner Portal</p> */}
         </div>
 
         <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto custom-scrollbar">

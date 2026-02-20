@@ -4,7 +4,7 @@ import {
    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-   FaUsers, FaTrash, FaSearch, FaEllipsisV, FaFilter, FaUserCircle, FaEnvelope, FaCalendarAlt
+   FaUsers, FaTrash, FaSearch, FaEllipsisV, FaFilter, FaUserCircle, FaEnvelope, FaCalendarAlt, FaExclamationTriangle, FaCheckCircle
 } from 'react-icons/fa';
 import { fetchCollection, deleteDocument } from '../../firebase/db';
 
@@ -30,7 +30,6 @@ const generateGrowthData = (users) => {
    const monthCounts = {};
    users.forEach(user => {
       let date;
-      // Handle various date formats
       const rawDate = user.joined || user.createdAt;
       
       if (rawDate?.seconds) date = new Date(rawDate.seconds * 1000);
@@ -54,6 +53,11 @@ const ManageUsers = () => {
    const [loading, setLoading] = useState(true);
    const [searchTerm, setSearchTerm] = useState("");
 
+   // --- NEW STATES FOR NOTIFICATION & DELETE MODAL ---
+   const [notification, setNotification] = useState(null);
+   const [deleteModal, setDeleteModal] = useState({ isOpen: false, userId: null, userName: '' });
+   const [isDeleting, setIsDeleting] = useState(false);
+
    // --- DATA LOADING ---
    useEffect(() => {
       const loadData = async () => {
@@ -63,17 +67,14 @@ const ManageUsers = () => {
                 fetchCollection('bookings')
             ]);
 
-            // Calculate Booking Counts
             const bookingCounts = {};
             bookingsData.forEach(booking => {
                 const uid = booking.userId || booking.user_id; 
                 if (uid) bookingCounts[uid] = (bookingCounts[uid] || 0) + 1;
             });
 
-            // Merge & Normalize Data
             const enrichedUsers = usersData.map(user => ({
                 ...user,
-                // --- FIX: CHECK ALL POSSIBLE NAME FIELDS ---
                 realName: user.name || user.displayName || user.fullName || "Unknown User",
                 realBookingCount: bookingCounts[user.id] || 0, 
                 displayDate: user.createdAt || user.joined 
@@ -89,26 +90,44 @@ const ManageUsers = () => {
       loadData();
    }, []);
 
+   // Clear notification automatically
+   useEffect(() => {
+      if (notification) {
+         const timer = setTimeout(() => setNotification(null), 3000);
+         return () => clearTimeout(timer);
+      }
+   }, [notification]);
+
    // --- DERIVED DATA ---
    const tourists = users.filter(user => user.role !== 'guide' && user.role !== 'admin');
    const userGrowthData = generateGrowthData(tourists);
 
    // --- FILTERING ---
    const filteredUsers = tourists.filter(user => {
-      const matchesSearch = (user.realName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-          (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-      return matchesSearch;
+      return (user.realName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+             (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase());
    });
 
-   const handleDelete = async (id) => {
-      if (window.confirm("Are you sure you want to remove this user? This cannot be undone.")) {
-         try {
-            await deleteDocument('users', id);
-            setUsers(users.filter(user => user.id !== id));
-         } catch (error) {
-            console.error("Error deleting user:", error);
-            alert("Failed to delete user.");
-         }
+   // --- CUSTOM DELETE LOGIC ---
+   const triggerDelete = (id, name) => {
+      setDeleteModal({ isOpen: true, userId: id, userName: name });
+   };
+
+   const confirmDelete = async () => {
+      const { userId } = deleteModal;
+      setIsDeleting(true);
+      
+      try {
+         // This correctly deletes the user from Firestore
+         await deleteDocument('users', userId);
+         setUsers(users.filter(user => user.id !== userId));
+         setNotification({ type: 'success', message: "User removed from database." });
+      } catch (error) {
+         console.error("Error deleting user:", error);
+         setNotification({ type: 'error', message: "Failed to delete user." });
+      } finally {
+         setIsDeleting(false);
+         setDeleteModal({ isOpen: false, userId: null, userName: '' });
       }
    };
 
@@ -130,8 +149,63 @@ const ManageUsers = () => {
          variants={containerVars}
          initial="hidden"
          animate="visible"
-         className="w-full space-y-8 pb-20"
+         className="w-full space-y-8 pb-20 relative"
       >
+         {/* --- FLOATING NOTIFICATION BANNER --- */}
+         <AnimatePresence>
+            {notification && (
+               <motion.div
+                  initial={{ opacity: 0, y: -20, x: '-50%' }}
+                  animate={{ opacity: 1, y: 0, x: '-50%' }}
+                  exit={{ opacity: 0, y: -20, x: '-50%' }}
+                  className={`fixed top-4 left-1/2 z-[100] px-6 py-4 rounded-xl shadow-2xl border flex items-center gap-3 font-bold text-sm uppercase tracking-wide
+                     ${notification.type === 'error' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[#3D4C38] text-[#F3F1E7] border-[#2B3326]'}`}
+               >
+                  {notification.type === 'error' ? <FaExclamationTriangle /> : <FaCheckCircle />}
+                  {notification.message}
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* --- DELETE CONFIRMATION MODAL --- */}
+         <AnimatePresence>
+            {deleteModal.isOpen && (
+               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F261C]/80 backdrop-blur-sm">
+                  <motion.div
+                     initial={{ opacity: 0, scale: 0.95 }}
+                     animate={{ opacity: 1, scale: 1 }}
+                     exit={{ opacity: 0, scale: 0.95 }}
+                     className="bg-[#F3F1E7] w-full max-w-sm rounded-2xl shadow-2xl border border-[#DEDBD0] overflow-hidden"
+                  >
+                     <div className="p-8 text-center">
+                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                           <FaExclamationTriangle />
+                        </div>
+                        <h3 className="text-2xl font-['Oswald'] font-bold text-[#2B3326] uppercase mb-2">Remove User</h3>
+                        <p className="text-[#5A6654] text-sm leading-relaxed mb-8">
+                           Are you sure you want to remove <b>{deleteModal.userName}</b>? Their database record will be permanently deleted.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                           <button
+                              onClick={confirmDelete}
+                              disabled={isDeleting}
+                              className="w-full py-3 bg-red-500 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-red-600 transition-colors shadow-lg disabled:opacity-50"
+                           >
+                              {isDeleting ? "Removing..." : "Yes, Remove User"}
+                           </button>
+                           <button
+                              onClick={() => setDeleteModal({ isOpen: false, userId: null, userName: '' })}
+                              disabled={isDeleting}
+                              className="w-full py-3 bg-transparent text-[#5A6654] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#DEDBD0]/50 transition-colors disabled:opacity-50"
+                           >
+                              Cancel
+                           </button>
+                        </div>
+                     </div>
+                  </motion.div>
+               </div>
+            )}
+         </AnimatePresence>
 
          {/* ==================== 1. HEADER & CHART SECTION ==================== */}
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -232,7 +306,6 @@ const ManageUsers = () => {
                                               <FaUserCircle />
                                           )}
                                        </div>
-                                       {/* --- USE NORMALIZED NAME --- */}
                                        <p className="font-bold text-[#2B3326] text-sm">{user.realName}</p>
                                     </div>
                                  </td>
@@ -258,7 +331,7 @@ const ManageUsers = () => {
                                  </td>
                                  <td className="px-6 py-4 text-center">
                                     <button
-                                       onClick={() => handleDelete(user.id)}
+                                       onClick={() => triggerDelete(user.id, user.realName)}
                                        className="p-2 rounded-lg bg-[#E2E6D5] text-[#5A6654] hover:bg-red-100 hover:text-red-600 transition-colors opacity-60 group-hover:opacity-100"
                                        title="Remove User"
                                     >
@@ -301,7 +374,6 @@ const ManageUsers = () => {
                                       )}
                                  </div>
                                  <div>
-                                    {/* --- USE NORMALIZED NAME --- */}
                                     <h4 className="font-bold text-[#2B3326] text-lg">{user.realName}</h4>
                                     <div className="flex items-center gap-1 text-xs text-[#5A6654]">
                                        <FaEnvelope size={10} /> {user.email}
@@ -325,7 +397,7 @@ const ManageUsers = () => {
                            </div>
 
                            <button
-                              onClick={() => handleDelete(user.id)}
+                              onClick={() => triggerDelete(user.id, user.realName)}
                               className="w-full py-3 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2"
                            >
                               <FaTrash size={12} /> Remove User

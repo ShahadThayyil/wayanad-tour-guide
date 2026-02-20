@@ -38,13 +38,11 @@ const AdminLayout = () => {
         {/* Header */}
         <div className="p-8 border-b border-[#F3F1E7]/10">
           <div className="flex items-center gap-3 mb-1">
-             <div className="w-8 h-8 bg-[#D4AF37] text-[#2B3326] rounded-lg flex items-center justify-center shadow-lg">
-                <FaTree className="text-sm" />
-             </div>
+             
              {/* Header Font: Oswald */}
              <h2 className="text-2xl font-['Oswald'] font-bold tracking-widest uppercase">Admin</h2>
           </div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1E7]/50 pl-11 font-['Oswald']">Control Panel</p>
+          {/* <p className="text-[10px] uppercase tracking-[0.2em] text-[#F3F1E7]/50 pl-11 font-['Oswald']">Control Panel</p> */}
         </div>
 
         {/* Navigation */}

@@ -42,17 +42,27 @@ const Navbar = () => {
           
           {/* LOGO */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="bg-[#3D4C38] text-[#F3F1E7] p-2.5 rounded-xl shadow-sm group-hover:scale-105 transition-transform duration-300">
-              <FaTree className="text-sm" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-['Oswald'] font-bold uppercase tracking-[0.2em] text-[#2B3326] text-lg leading-none group-hover:text-[#3D4C38] transition-colors">
-                Wayanad
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] hidden sm:block">
-                Official Guide
-              </span>
-            </div>
+           
+          <div className="flex items-center gap-2 ">
+  
+  {/* Logo */}
+  <img
+    src="/logo.png"   // change to your logo path
+    alt="Logo"
+    className="w-10 h-10 object-contain"
+  />
+
+  {/* Text */}
+  <div className="flex flex-col">
+    <span className="font-['Oswald'] font-bold uppercase tracking-[0.2em] text-[#2B3326] text-lg leading-none group-hover:text-[#3D4C38] transition-colors">
+      Wayanad
+    </span>
+    <span className="text-[10px] font-bold uppercase tracking-widest text-[#5A6654] hidden sm:block">
+      Tour Guide
+    </span>
+  </div>
+
+</div>
           </Link>
 
           {/* DESKTOP LINKS */}

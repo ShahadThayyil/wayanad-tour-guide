@@ -109,7 +109,7 @@ const Home = () => {
                 ))}
               </div>
               <div className="text-[10px] lg:text-xs font-bold uppercase tracking-wide text-[#3D4C38]">
-                <span className="block text-sm lg:text-lg font-['Oswald']">12k+</span> Explorers
+                <span className="block text-sm lg:text-lg font-['Oswald']">0.05k+</span> Explorers
               </div>
             </div>
           </motion.div>

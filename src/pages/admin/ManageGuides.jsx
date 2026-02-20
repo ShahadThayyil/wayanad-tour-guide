@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
    FaUserTie, FaTrash, FaSearch, FaEllipsisV, FaFilter, FaEnvelope, 
-   FaCalendarAlt, FaPlus, FaTimes, FaMapMarkerAlt, FaLanguage, FaBriefcase, FaIdBadge
+   FaCalendarAlt, FaPlus, FaTimes, FaMapMarkerAlt, FaLanguage, FaBriefcase, FaIdBadge, FaExclamationTriangle, FaCheckCircle
 } from 'react-icons/fa';
 import {
    fetchCollection, addDocument, deleteDocument, convertToBase64
@@ -34,13 +34,11 @@ const ManageGuides = () => {
    const [searchTerm, setSearchTerm] = useState('');
    const [loading, setLoading] = useState(true);
 
-   // --- MODAL STATE ---
+   // --- MODAL & NOTIFICATION STATE ---
    const [selectedGuide, setSelectedGuide] = useState(null); 
-   const [showAddForm, setShowAddForm] = useState(false);
-   
-   // Form State
-   const [newGuide, setNewGuide] = useState({ name: '', email: '', experience: '', rate: '', languages: '', bio: '', placeId: '', placeName: '' });
-   const [guideImage, setGuideImage] = useState(null);
+   const [notification, setNotification] = useState(null);
+   const [deleteModal, setDeleteModal] = useState({ isOpen: false, guideId: null, guideName: '' });
+   const [isDeleting, setIsDeleting] = useState(false);
 
    // --- FETCH DATA ---
    useEffect(() => {
@@ -61,64 +59,48 @@ const ManageGuides = () => {
       loadData();
    }, []);
 
+   // Clear notification automatically
+   useEffect(() => {
+      if (notification) {
+         const timer = setTimeout(() => setNotification(null), 3000);
+         return () => clearTimeout(timer);
+      }
+   }, [notification]);
+
    const guideActivityData = generateGuideGrowthData(guides);
 
-   // --- ACTIONS ---
-   const handleDeleteGuide = async (id, e) => {
-      if(e) e.stopPropagation(); 
-      if (window.confirm("Are you sure you want to remove this guide?")) {
-         try {
-            await deleteDocument('guides', id);
-            setGuides(guides.filter(guide => guide.id !== id));
-            if (selectedGuide?.id === id) setSelectedGuide(null);
-         } catch (error) {
-            console.error("Error deleting guide:", error);
-            alert("Failed to delete guide");
-         }
-      }
+   // --- ACTIONS: CUSTOM DELETE ---
+   const triggerDelete = (id, name, e) => {
+      if (e) e.stopPropagation(); // Prevent opening the guide details popup
+      setDeleteModal({ isOpen: true, guideId: id, guideName: name });
    };
 
-   const handleImageUpload = async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-         if (file.size > 400 * 1024) {
-            alert("File is too large! Please choose an image under 400KB.");
-            return;
-         }
-         try {
-            const base64 = await convertToBase64(file);
-            setGuideImage(base64);
-         } catch (error) {
-            console.error("Error converting image:", error);
-         }
-      }
-   };
-
-   const handleAddGuide = async (e) => {
-      e.preventDefault();
+   const confirmDelete = async () => {
+      const { guideId } = deleteModal;
+      setIsDeleting(true);
+      
       try {
-         if (!newGuide.name || !newGuide.email) {
-            alert("Name and Email are required");
-            return;
+         // 1. Delete from 'guides' collection
+         await deleteDocument('guides', guideId);
+         
+         // 2. Delete from 'users' collection (CRITICAL FIX)
+         await deleteDocument('users', guideId);
+         
+         // Remove from local state
+         setGuides(guides.filter(guide => guide.id !== guideId));
+         
+         // If the deleted guide was currently selected/viewed, close that view
+         if (selectedGuide?.id === guideId) {
+            setSelectedGuide(null);
          }
 
-         const guideData = {
-            ...newGuide,
-            languages: newGuide.languages.split(',').map(l => l.trim()),
-            joined: new Date().toISOString().split('T')[0],
-            status: 'Active',
-            image: guideImage || "https://via.placeholder.com/150"
-         };
-
-         const docId = await addDocument('guides', guideData);
-         setGuides([...guides, { id: docId, ...guideData }]);
-
-         setNewGuide({ name: '', email: '', experience: '', rate: '', languages: '', bio: '', placeId: '', placeName: '' });
-         setGuideImage(null);
-         setShowAddForm(false);
+         setNotification({ type: 'success', message: "Guide permanently removed from database." });
       } catch (error) {
-         console.error("Error adding guide:", error);
-         alert(`Failed to add guide: ${error.message}`);
+         console.error("Error deleting guide:", error);
+         setNotification({ type: 'error', message: "Failed to delete guide." });
+      } finally {
+         setIsDeleting(false);
+         setDeleteModal({ isOpen: false, guideId: null, guideName: '' });
       }
    };
 
@@ -147,7 +129,63 @@ const ManageGuides = () => {
          className="w-full space-y-8 pb-20 relative"
       >
 
-         {/* ==================== 1. REDESIGNED GUIDE DETAILS POPUP ==================== */}
+         {/* --- FLOATING NOTIFICATION BANNER --- */}
+         <AnimatePresence>
+            {notification && (
+               <motion.div
+                  initial={{ opacity: 0, y: -20, x: '-50%' }}
+                  animate={{ opacity: 1, y: 0, x: '-50%' }}
+                  exit={{ opacity: 0, y: -20, x: '-50%' }}
+                  className={`fixed top-4 left-1/2 z-[100] px-6 py-4 rounded-xl shadow-2xl border flex items-center gap-3 font-bold text-sm uppercase tracking-wide
+                     ${notification.type === 'error' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[#3D4C38] text-[#F3F1E7] border-[#2B3326]'}`}
+               >
+                  {notification.type === 'error' ? <FaExclamationTriangle /> : <FaCheckCircle />}
+                  {notification.message}
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* --- DELETE CONFIRMATION MODAL --- */}
+         <AnimatePresence>
+            {deleteModal.isOpen && (
+               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1F261C]/80 backdrop-blur-sm">
+                  <motion.div
+                     initial={{ opacity: 0, scale: 0.95 }}
+                     animate={{ opacity: 1, scale: 1 }}
+                     exit={{ opacity: 0, scale: 0.95 }}
+                     className="bg-[#F3F1E7] w-full max-w-sm rounded-2xl shadow-2xl border border-[#DEDBD0] overflow-hidden"
+                  >
+                     <div className="p-8 text-center">
+                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                           <FaExclamationTriangle />
+                        </div>
+                        <h3 className="text-2xl font-['Oswald'] font-bold text-[#2B3326] uppercase mb-2">Remove Guide</h3>
+                        <p className="text-[#5A6654] text-sm leading-relaxed mb-8">
+                           Are you sure you want to remove <b>{deleteModal.guideName}</b>? This will permanently delete their guide profile.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                           <button
+                              onClick={confirmDelete}
+                              disabled={isDeleting}
+                              className="w-full py-3 bg-red-500 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-red-600 transition-colors shadow-lg disabled:opacity-50"
+                           >
+                              {isDeleting ? "Removing..." : "Yes, Remove Guide"}
+                           </button>
+                           <button
+                              onClick={() => setDeleteModal({ isOpen: false, guideId: null, guideName: '' })}
+                              disabled={isDeleting}
+                              className="w-full py-3 bg-transparent text-[#5A6654] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#DEDBD0]/50 transition-colors disabled:opacity-50"
+                           >
+                              Cancel
+                           </button>
+                        </div>
+                     </div>
+                  </motion.div>
+               </div>
+            )}
+         </AnimatePresence>
+
+         {/* ==================== 1. GUIDE DETAILS POPUP ==================== */}
          <AnimatePresence>
             {selectedGuide && (
                <motion.div
@@ -167,7 +205,6 @@ const ManageGuides = () => {
                      
                      {/* --- A. Banner Header --- */}
                      <div className="relative h-36  shrink-0">
-                        {/* Decorative Noise */}
                         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/noise.png')]"></div>
                         
                         <button 
@@ -276,7 +313,7 @@ const ManageGuides = () => {
                               ID: {selectedGuide.id}
                            </p>
                            <button 
-                              onClick={(e) => handleDeleteGuide(selectedGuide.id, e)}
+                              onClick={(e) => triggerDelete(selectedGuide.id, selectedGuide.name, e)}
                               className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-100 transition-colors shadow-sm"
                            >
                               <FaTrash size={12} /> Remove Guide
@@ -342,7 +379,7 @@ const ManageGuides = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                />
             </div>
-           
+            
          </motion.div>
 
       
@@ -385,7 +422,7 @@ const ManageGuides = () => {
                                  {guide.placeName || guide.location || "Not Assigned"}
                               </td>
                               <td className="px-6 py-4">
-                                 <button onClick={(e) => handleDeleteGuide(guide.id, e)} className="p-2 rounded-lg bg-[#E2E6D5] text-[#5A6654] hover:bg-red-100 hover:text-red-600 transition-colors opacity-60 group-hover:opacity-100">
+                                 <button onClick={(e) => triggerDelete(guide.id, guide.name, e)} className="p-2 rounded-lg bg-[#E2E6D5] text-[#5A6654] hover:bg-red-100 hover:text-red-600 transition-colors opacity-60 group-hover:opacity-100">
                                     <FaTrash size={12} />
                                  </button>
                               </td>
@@ -423,7 +460,7 @@ const ManageGuides = () => {
                            <div className="flex items-center gap-2 text-xs text-[#5A6654]">
                               <FaMapMarkerAlt /> {guide.placeName || "Not Assigned"}
                            </div>
-                           <button onClick={(e) => handleDeleteGuide(guide.id, e)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                           <button onClick={(e) => triggerDelete(guide.id, guide.name, e)} className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
                               <FaTrash size={14} />
                            </button>
                         </div>

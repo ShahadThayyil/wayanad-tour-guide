@@ -4,7 +4,7 @@ import {
    PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import {
-   FaCheckCircle, FaTimesCircle, FaClock, FaMapMarkerAlt, FaUser, FaPhoneAlt, FaWhatsapp, FaUserFriends, FaCommentDots
+   FaCheckCircle, FaTimesCircle, FaClock, FaMapMarkerAlt, FaUser, FaPhoneAlt, FaWhatsapp, FaUserFriends, FaCommentDots, FaEnvelope, FaExclamationTriangle
 } from 'react-icons/fa';
 import { fetchQuery, where, updateDocument } from '../../firebase/db';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +17,11 @@ const Requests = () => {
    const { currentUser } = useAuth();
    const [requests, setRequests] = useState([]);
    const [loading, setLoading] = useState(true);
+
+   // --- NEW STATES FOR MODAL & NOTIFICATIONS ---
+   const [notification, setNotification] = useState(null);
+   const [modalConfig, setModalConfig] = useState({ isOpen: false, request: null, actionType: null });
+   const [isProcessing, setIsProcessing] = useState(false);
 
    useEffect(() => {
       const loadRequests = async () => {
@@ -33,46 +38,60 @@ const Requests = () => {
       loadRequests();
    }, [currentUser]);
 
-   // --- ACTIONS (UPDATED) ---
-   const handleAction = async (id, newStatus) => {
+   // Clear notification automatically after 4 seconds
+   useEffect(() => {
+      if (notification) {
+         const timer = setTimeout(() => setNotification(null), 4000);
+         return () => clearTimeout(timer);
+      }
+   }, [notification]);
+
+   // --- OPEN CONFIRMATION MODAL ---
+   const triggerActionModal = (request, actionType) => {
+      setModalConfig({ isOpen: true, request, actionType });
+   };
+
+   // --- EXECUTE DB UPDATE & EMAIL (CALLED FROM MODAL) ---
+   const executeAction = async (sendEmail = false) => {
+      const { request, actionType } = modalConfig;
+      setIsProcessing(true);
+
       try {
-         // 1. Update Database Status first
-         await updateDocument('bookings', id, { status: newStatus });
+         // 1. Update Database
+         await updateDocument('bookings', request.id, { status: actionType });
 
-         // 2. If Confirmed, Send Email
-         let emailSent = false;
-         if (newStatus === 'confirmed') {
-             // Find the specific request object to get details for the email
-             const requestToApprove = requests.find(r => r.id === id);
-             
-             // Check if we have the request and the user's email
-             if (requestToApprove && requestToApprove.touristEmail) {
-                 console.log("Sending approval email to:", requestToApprove.touristEmail);
-                 // CALL THE EMAIL SERVICE HERE
-                 emailSent = await sendApprovalEmail(requestToApprove);
+         // 2. Update Local UI State
+         setRequests(prev => prev.map(req =>
+            req.id === request.id ? { ...req, status: actionType } : req
+         ));
+
+         // 3. Handle Email
+         if (actionType === 'confirmed') {
+             if (sendEmail && request.touristEmail) {
+                 setNotification({ type: 'info', message: "Sending confirmation email..." });
+                 
+                 const emailSent = await sendApprovalEmail(request);
+                 
+                 if (emailSent) {
+                     setNotification({ type: 'success', message: "Accepted! Confirmation email sent." });
+                 } else {
+                     setNotification({ type: 'error', message: "Accepted, but email failed to send." });
+                 }
+             } else if (sendEmail && !request.touristEmail) {
+                 setNotification({ type: 'error', message: "Accepted! (Could not send email: User email missing)." });
              } else {
-                 console.warn("Cannot send email: Tourist email missing in booking data.");
+                 setNotification({ type: 'success', message: "Booking accepted successfully." });
              }
-         }
-
-         // 3. Update Local UI State
-         const updatedRequests = requests.map(req =>
-            req.id === id ? { ...req, status: newStatus } : req
-         );
-         setRequests(updatedRequests);
-
-         // 4. Show Feedback to Guide
-         if (newStatus === 'confirmed') {
-             if (emailSent) {
-                 alert("Request Accepted! Confirmation email sent to the tourist.");
-             } else {
-                 alert("Request Accepted! (Note: Email alert failed to send, but booking is confirmed in DB)");
-             }
+         } else if (actionType === 'rejected') {
+             setNotification({ type: 'success', message: "Booking request rejected." });
          }
 
       } catch (error) {
          console.error("Error updating booking status", error);
-         alert("Failed to update status");
+         setNotification({ type: 'error', message: "Failed to update status. Please try again." });
+      } finally {
+         setIsProcessing(false);
+         setModalConfig({ isOpen: false, request: null, actionType: null }); // Close modal
       }
    };
 
@@ -108,8 +127,96 @@ const Requests = () => {
    return (
       <motion.div
          initial="hidden" animate="visible"
-         className="w-full space-y-8 pb-20"
+         className="w-full space-y-8 pb-20 relative"
       >
+
+         {/* --- FLOATING NOTIFICATION BANNER --- */}
+         <AnimatePresence>
+            {notification && (
+               <motion.div
+                  initial={{ opacity: 0, y: -20, x: '-50%' }}
+                  animate={{ opacity: 1, y: 0, x: '-50%' }}
+                  exit={{ opacity: 0, y: -20, x: '-50%' }}
+                  className={`fixed top-4 left-1/2 z-[100] px-6 py-4 rounded-xl shadow-2xl border flex items-center gap-3 font-bold text-sm uppercase tracking-wide
+                     ${notification.type === 'error' ? 'bg-red-100 text-red-600 border-red-200' : 
+                       notification.type === 'info' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/50' : 
+                       'bg-[#3D4C38] text-[#F3F1E7] border-[#2B3326]'}`}
+               >
+                  {notification.type === 'error' ? <FaExclamationTriangle /> : <FaCheckCircle />}
+                  {notification.message}
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* --- ACTION CONFIRMATION MODAL --- */}
+         <AnimatePresence>
+            {modalConfig.isOpen && (
+               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F261C]/80 backdrop-blur-sm">
+                  <motion.div
+                     initial={{ opacity: 0, scale: 0.95 }}
+                     animate={{ opacity: 1, scale: 1 }}
+                     exit={{ opacity: 0, scale: 0.95 }}
+                     className="bg-[#F3F1E7] w-full max-w-md rounded-2xl shadow-2xl border border-[#DEDBD0] overflow-hidden"
+                  >
+                     <div className="p-8 text-center">
+                        {modalConfig.actionType === 'confirmed' ? (
+                           <>
+                              <div className="w-16 h-16 bg-[#3D4C38] text-[#D4AF37] rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                                 <FaEnvelope />
+                              </div>
+                              <h3 className="text-2xl font-['Oswald'] font-bold text-[#2B3326] uppercase mb-2">Accept Booking</h3>
+                              <p className="text-[#5A6654] text-sm leading-relaxed mb-8">
+                                 You are about to accept the request for <b>{modalConfig.request?.touristName}</b>. Would you like to send them a confirmation email?
+                              </p>
+                              <div className="flex flex-col gap-3">
+                                 <button
+                                    onClick={() => executeAction(true)}
+                                    disabled={isProcessing}
+                                    className="w-full py-3 bg-[#3D4C38] text-[#F3F1E7] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#2B3326] transition-colors shadow-lg disabled:opacity-50"
+                                 >
+                                    {isProcessing ? "Processing..." : "Accept & Send Email"}
+                                 </button>
+                                 <button
+                                    onClick={() => executeAction(false)}
+                                    disabled={isProcessing}
+                                    className="w-full py-3 border border-[#3D4C38] text-[#3D4C38] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#E2E6D5] transition-colors disabled:opacity-50"
+                                 >
+                                    Accept Without Email
+                                 </button>
+                              </div>
+                           </>
+                        ) : (
+                           <>
+                              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                                 <FaExclamationTriangle />
+                              </div>
+                              <h3 className="text-2xl font-['Oswald'] font-bold text-[#2B3326] uppercase mb-2">Reject Booking</h3>
+                              <p className="text-[#5A6654] text-sm leading-relaxed mb-8">
+                                 Are you sure you want to reject the request for <b>{modalConfig.request?.touristName}</b>? This cannot be undone.
+                              </p>
+                              <div className="flex flex-col gap-3">
+                                 <button
+                                    onClick={() => executeAction(false)}
+                                    disabled={isProcessing}
+                                    className="w-full py-3 bg-red-500 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-red-600 transition-colors shadow-lg disabled:opacity-50"
+                                 >
+                                    {isProcessing ? "Processing..." : "Yes, Reject"}
+                                 </button>
+                              </div>
+                           </>
+                        )}
+                        <button
+                           onClick={() => setModalConfig({ isOpen: false, request: null, actionType: null })}
+                           disabled={isProcessing}
+                           className="w-full py-3 mt-3 bg-transparent text-[#5A6654] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#DEDBD0]/50 transition-colors disabled:opacity-50"
+                        >
+                           Cancel
+                        </button>
+                     </div>
+                  </motion.div>
+               </div>
+            )}
+         </AnimatePresence>
 
          {/* ==================== 1. HEADER & SUMMARY ==================== */}
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -226,13 +333,13 @@ const Requests = () => {
                      {req.status === 'pending' && (
                         <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#DEDBD0]">
                            <button
-                              onClick={() => handleAction(req.id, 'confirmed')}
+                              onClick={() => triggerActionModal(req, 'confirmed')}
                               className="py-3 bg-[#3D4C38] text-[#F3F1E7] rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#2B3326] transition-colors flex items-center justify-center gap-2"
                            >
                               <FaCheckCircle /> Accept Request
                            </button>
                            <button
-                              onClick={() => handleAction(req.id, 'rejected')}
+                              onClick={() => triggerActionModal(req, 'rejected')}
                               className="py-3 bg-white border border-red-200 text-red-500 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
                            >
                               <FaTimesCircle /> Reject

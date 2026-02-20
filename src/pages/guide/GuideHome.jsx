@@ -28,10 +28,19 @@ const GuideHome = () => {
   const pendingCount = myBookings.filter(b => b.status === 'pending').length;
   const confirmedCount = myBookings.filter(b => b.status === 'confirmed').length;
 
-  // Get recent 3 accepted bookings
+  // --- FIXED LOGIC: Get upcoming 3 accepted bookings ---
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Normalize today to midnight for accurate comparison
+
   const recentAccepted = myBookings
-    .filter(b => b.status === 'confirmed')
-    .sort((a, b) => new Date(a.date) - new Date(b.date)) // Sort by date ascending
+    .filter(b => {
+      if (b.status !== 'confirmed') return false;
+      if (!b.date) return false;
+      
+      const tripDate = new Date(b.date);
+      return tripDate >= today; // Only include trips happening today or in the future
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date)) // Sort by nearest date first
     .slice(0, 3);
 
   // Animation Variants
@@ -65,11 +74,7 @@ const GuideHome = () => {
             Welcome back, {currentUser?.displayName || 'Guide'}. You have {pendingCount} new requests.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#5A6654] bg-[#F3F1E7] px-3 py-1 rounded-lg border border-[#DEDBD0]">
-            Status: Online
-          </span>
-        </div>
+        
       </motion.div>
 
 
@@ -86,7 +91,7 @@ const GuideHome = () => {
           accentColor="bg-[#D4AF37] text-[#2B3326]"
         />
         <StatCard
-          title="Upcoming Trips"
+          title="Confirmed Trips"
           value={confirmedCount}
           subtext="Confirmed bookings"
           icon={<FaMapMarkerAlt />}
@@ -98,10 +103,8 @@ const GuideHome = () => {
       {/* ==================== 3. RECENT ACCEPTED BOOKINGS ==================== */}
       <motion.div variants={itemVars} className="bg-[#F3F1E7] p-6 md:p-8 rounded-2xl shadow-xl shadow-[#3D4C38]/5 border border-[#DEDBD0]">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="font-['Oswald'] font-bold text-xl text-[#2B3326] uppercase">Recent Accepted Bookings</h3>
-          <span className="text-[#3D4C38] bg-[#3D4C38]/10 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-            Next 7 Days
-          </span>
+          <h3 className="font-['Oswald'] font-bold text-xl text-[#2B3326] uppercase">Recent Bookings</h3>
+          
         </div>
 
         <div className="grid gap-4">
